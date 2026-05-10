@@ -1,0 +1,53 @@
+name: aden_data
+description: "Aden Data - Smart Network Bandwidth Manager"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Shared Preferences (local settings storage)
+  shared_preferences: ^2.3.3
+
+  # Network info
+  connectivity_plus: ^6.1.1
+  network_info_plus: ^6.0.2
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/net_quality.tflite
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700

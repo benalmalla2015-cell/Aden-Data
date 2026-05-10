@@ -1,0 +1,111 @@
+import 'dart:async';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+const _methodChannel = MethodChannel('com.aden.data/vpn');
+const _eventChannel = EventChannel('com.aden.data/vpn_stats');
+
+class VpnChannel {
+  const VpnChannel._();
+
+  static Future<bool> startVpn({
+    required List<String> allowedPackages,
+    required String profile,
+  }) async {
+    try {
+      final result = await _methodChannel.invokeMethod<bool>('startVpn', {
+        'allowedPackages': allowedPackages,
+        'profile': profile,
+      });
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  static Future<bool> stopVpn() async {
+    try {
+      final result = await _methodChannel.invokeMethod<bool>('stopVpn');
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  static Future<List<AppInfo>> getInstalledApps() async {
+    try {
+      final result = await _methodChannel.invokeMethod<List<dynamic>>(
+        'getInstalledApps',
+      );
+      return (result ?? []).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        return AppInfo.fromMap(map);
+      }).toList();
+    } on PlatformException {
+      return [];
+    }
+  }
+
+  static Future<String> classifyNetwork() async {
+    try {
+      final result = await _methodChannel.invokeMethod<String>(
+        'classifyNetwork',
+      );
+      return result ?? 'GOOD';
+    } on PlatformException {
+      return 'GOOD';
+    }
+  }
+
+  static Stream<VpnStats> get liveStats {
+    return _eventChannel.receiveBroadcastStream().map((event) {
+      final map = Map<String, dynamic>.from(event as Map);
+      return VpnStats.fromMap(map);
+    });
+  }
+}
+
+class AppInfo {
+  final String packageName;
+  final String appName;
+  final String? iconBase64;
+
+  const AppInfo({
+    required this.packageName,
+    required this.appName,
+    this.iconBase64,
+  });
+
+  factory AppInfo.fromMap(Map<String, dynamic> map) => AppInfo(
+    packageName: map['pkg'] as String,
+    appName: map['name'] as String,
+    iconBase64: map['icon'] as String?,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is AppInfo && other.packageName == packageName;
+
+  @override
+  int get hashCode => packageName.hashCode;
+}
+
+class VpnStats {
+  final double downKbps;
+  final double upKbps;
+  final int latencyMs;
+
+  const VpnStats({
+    required this.downKbps,
+    required this.upKbps,
+    required this.latencyMs,
+  });
+
+  factory VpnStats.fromMap(Map<String, dynamic> map) => VpnStats(
+    downKbps: (map['down_kbps'] as num?)?.toDouble() ?? 0,
+    upKbps: (map['up_kbps'] as num?)?.toDouble() ?? 0,
+    latencyMs: (map['latency'] as num?)?.toInt() ?? 0,
+  );
+}
+
+final vpnChannelProvider = Provider<VpnChannel>((_) => const VpnChannel._());
