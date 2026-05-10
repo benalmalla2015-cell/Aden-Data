@@ -1,30 +1,32 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:aden_data/main.dart';
+import 'package:aden_data/core/utils/vpn_state.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('AiState', () {
+    test('fromString parses all states', () {
+      expect(AiStateX.fromString('NORMAL'),     AiState.normal);
+      expect(AiStateX.fromString('DEGRADED'),   AiState.degraded);
+      expect(AiStateX.fromString('EMERGENCY'),  AiState.emergency);
+      expect(AiStateX.fromString('DEEP_FREEZE'), AiState.deepFreeze);
+      expect(AiStateX.fromString(null),          AiState.normal);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('deepFreeze isPulsing', () {
+      expect(AiState.deepFreeze.isPulsing, isTrue);
+      expect(AiState.normal.isPulsing,     isFalse);
+    });
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  group('VpnStats', () {
+    test('fromMap parses aiState', () {
+      final stats = VpnStats.fromMap({
+        'down_kbps': 15.0,
+        'up_kbps': 5.0,
+        'latency': 700,
+        'ai_state': 'DEEP_FREEZE',
+      });
+      expect(stats.downKbps, 15.0);
+      expect(stats.aiState, AiState.deepFreeze);
+    });
   });
 }

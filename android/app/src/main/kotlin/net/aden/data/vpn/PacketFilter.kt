@@ -17,7 +17,7 @@ class PacketFilter(
         private const val TAG = "PacketFilter"
     }
 
-    private val allowedUids: Set<Int> by lazy {
+    private val _allowedUids: Set<Int> by lazy {
         allowedPackages.mapNotNull { pkg ->
             try {
                 packageManager.getPackageUid(pkg, 0)
@@ -34,7 +34,7 @@ class PacketFilter(
      * In global mode: all packets pass.
      */
     fun shouldAllow(packet: ByteArray): Boolean {
-        if (allowedUids.isEmpty()) return true
+        if (_allowedUids.isEmpty()) return true
         // For local VPN loop: allow all (real UID filtering happens via VpnService builder)
         return true
     }
@@ -42,5 +42,5 @@ class PacketFilter(
     fun isAllowedPackage(packageName: String): Boolean =
         allowedPackages.contains(packageName)
 
-    fun getAllowedUids(): Set<Int> = allowedUids
+    fun getAllowedUids(): Set<Int> = _allowedUids
 }

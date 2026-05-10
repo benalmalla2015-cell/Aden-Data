@@ -63,6 +63,8 @@ class _ProfileCard extends StatelessWidget {
         return Icons.signal_cellular_alt_rounded;
       case VpnProfile.weakWifi:
         return Icons.wifi_rounded;
+      case VpnProfile.emergency:
+        return Icons.emergency_rounded;
       case VpnProfile.globalAccess:
         return Icons.public_rounded;
     }
@@ -74,6 +76,8 @@ class _ProfileCard extends StatelessWidget {
         return AdenColors.primary;
       case VpnProfile.weakWifi:
         return AdenColors.accent;
+      case VpnProfile.emergency:
+        return const Color(0xFFDC143C);
       case VpnProfile.globalAccess:
         return AdenColors.success;
     }

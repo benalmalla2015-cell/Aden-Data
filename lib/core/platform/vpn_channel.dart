@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/vpn_state.dart';
 
 const _methodChannel = MethodChannel('com.aden.data/vpn');
 const _eventChannel = EventChannel('com.aden.data/vpn_stats');
@@ -65,6 +66,8 @@ class VpnChannel {
   }
 }
 
+// AppInfo — moved to vpn_channel.dart as it is the platform model
+
 class AppInfo {
   final String packageName;
   final String appName;
@@ -88,24 +91,6 @@ class AppInfo {
 
   @override
   int get hashCode => packageName.hashCode;
-}
-
-class VpnStats {
-  final double downKbps;
-  final double upKbps;
-  final int latencyMs;
-
-  const VpnStats({
-    required this.downKbps,
-    required this.upKbps,
-    required this.latencyMs,
-  });
-
-  factory VpnStats.fromMap(Map<String, dynamic> map) => VpnStats(
-    downKbps: (map['down_kbps'] as num?)?.toDouble() ?? 0,
-    upKbps: (map['up_kbps'] as num?)?.toDouble() ?? 0,
-    latencyMs: (map['latency'] as num?)?.toInt() ?? 0,
-  );
 }
 
 final vpnChannelProvider = Provider<VpnChannel>((_) => const VpnChannel._());

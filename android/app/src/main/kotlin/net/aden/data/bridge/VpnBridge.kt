@@ -15,8 +15,9 @@ import android.util.Log
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import net.aden.data.ai.NetworkClassifier
+import net.aden.data.ai.NetworkClassifierV2
 import net.aden.data.vpn.AdenVpnService
+import net.aden.data.vpn.AiState
 import net.aden.data.receiver.ConnectivityWatcher
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
@@ -38,7 +39,7 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
         private const val VPN_REQUEST_CODE = 100
     }
 
-    private val classifier = NetworkClassifier(context)
+    private val classifier = NetworkClassifierV2(context)
     private val executor = Executors.newScheduledThreadPool(1)
     private var statsTask: ScheduledFuture<*>? = null
     private var eventSink: EventChannel.EventSink? = null
@@ -131,9 +132,8 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
 
     private fun handleClassify(result: MethodChannel.Result) {
         executor.execute {
-            val quality = ConnectivityWatcher.lastQuality.takeIf { it != "GOOD" }
-                ?: classifier.classify()
-            result.success(quality)
+            val state = AdenVpnService.currentAiState
+            result.success(state.name)   // "NORMAL"|"DEGRADED"|"EMERGENCY"|"DEEP_FREEZE"
         }
     }
 
@@ -167,8 +167,9 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
             try {
                 val stats = mapOf(
                     "down_kbps" to (AdenVpnService.downloadBytes / 1024.0),
-                    "up_kbps" to (AdenVpnService.uploadBytes / 1024.0),
-                    "latency" to AdenVpnService.lastLatencyMs,
+                    "up_kbps"   to (AdenVpnService.uploadBytes / 1024.0),
+                    "latency"   to AdenVpnService.lastLatencyMs,
+                    "ai_state"  to AdenVpnService.currentAiState.name,
                 )
                 eventSink?.success(stats)
             } catch (e: Exception) {

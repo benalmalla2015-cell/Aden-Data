@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "net.aden.data.aden_data"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "net.aden.data"
-        minSdk = 21  // Android 5.0 Lollipop
+        minSdk = flutter.minSdkVersion  // Android 5.0 Lollipop
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -44,7 +44,7 @@ android {
     }
 
     aaptOptions {
-        noCompress += listOf("tflite", "lite")
+        noCompress += listOf("aden", "tflite")
     }
 
     packagingOptions {
@@ -64,10 +64,6 @@ flutter {
 }
 
 dependencies {
-    // TensorFlow Lite — lightweight, no GPU delegate for size
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-
     // AndroidX Core
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

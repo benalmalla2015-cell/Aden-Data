@@ -43,7 +43,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/models/net_quality.tflite
+    - assets/models/net_quality.aden
 
   fonts:
     - family: Cairo

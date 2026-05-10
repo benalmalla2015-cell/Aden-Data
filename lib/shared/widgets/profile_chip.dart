@@ -20,6 +20,8 @@ class ProfileChip extends StatelessWidget {
         return Icons.signal_cellular_alt_rounded;
       case VpnProfile.weakWifi:
         return Icons.wifi_rounded;
+      case VpnProfile.emergency:
+        return Icons.emergency_rounded;
       case VpnProfile.globalAccess:
         return Icons.public_rounded;
     }
