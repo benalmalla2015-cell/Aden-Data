@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.net.TrafficStats
 import android.net.VpnService
 import android.os.Build
 import android.util.Base64
@@ -60,7 +61,7 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
 
     private fun handleStartVpn(call: MethodCall, result: MethodChannel.Result) {
         val packages = call.argument<List<String>>("allowedPackages") ?: emptyList()
-        val profile = call.argument<String>("profile") ?: "CELLULAR"
+        val profile   = call.argument<String>("profile") ?: "CELLULAR"
 
         if (profile == "GLOBAL") {
             stopVpnService()
@@ -70,17 +71,31 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
 
         val prepareIntent = VpnService.prepare(context)
         if (prepareIntent != null) {
-            // VPN permission not granted — caller must launch this intent
             result.error("VPN_PERMISSION_REQUIRED", "VPN permission required", null)
             return
         }
 
+        // Resolve target package + UID (first entry in the list)
+        val targetPkg = packages.firstOrNull() ?: ""
+        val targetUid: Int = if (targetPkg.isNotEmpty()) {
+            try {
+                context.packageManager.getPackageUid(targetPkg, 0)
+            } catch (e: Exception) {
+                Log.w(TAG, "Cannot resolve UID for $targetPkg: ${e.message}")
+                TrafficStats.UNSUPPORTED
+            }
+        } else {
+            TrafficStats.UNSUPPORTED
+        }
+
         val intent = Intent(context, AdenVpnService::class.java).apply {
             action = AdenVpnService.ACTION_START
-            putStringArrayListExtra(AdenVpnService.EXTRA_PACKAGES, ArrayList(packages))
+            putExtra(AdenVpnService.EXTRA_TARGET_PKG, targetPkg)
+            putExtra(AdenVpnService.EXTRA_TARGET_UID, targetUid)
             putExtra(AdenVpnService.EXTRA_PROFILE, profile)
         }
         context.startForegroundService(intent)
+        Log.i(TAG, "VPN start requested | profile=$profile | target=$targetPkg | uid=$targetUid")
         result.success(true)
     }
 
@@ -165,11 +180,16 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
         eventSink = events
         statsTask = executor.scheduleAtFixedRate({
             try {
+                // downloadBytes / uploadBytes are now byte-deltas per second from TrafficStats
+                val downKbps = AdenVpnService.downloadBytes / 1024.0
+                val upKbps   = AdenVpnService.uploadBytes   / 1024.0
                 val stats = mapOf(
-                    "down_kbps" to (AdenVpnService.downloadBytes / 1024.0),
-                    "up_kbps"   to (AdenVpnService.uploadBytes / 1024.0),
+                    "down_kbps" to downKbps,
+                    "up_kbps"   to upKbps,
                     "latency"   to AdenVpnService.lastLatencyMs,
                     "ai_state"  to AdenVpnService.currentAiState.name,
+                    "is_active" to AdenVpnService.isRunning,
+                    "target_pkg" to AdenVpnService.targetPkg,
                 )
                 eventSink?.success(stats)
             } catch (e: Exception) {

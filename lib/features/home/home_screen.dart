@@ -49,8 +49,12 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const _NetworkQualityBanner(),
-            const SizedBox(height: 24),
+            if (vpn.isActive) const _NetworkQualityBanner(),
+            if (vpn.isActive) const SizedBox(height: 16),
+            if (!vpn.isActive && vpn.targetApp == null)
+              const _NoTargetWarning(),
+            if (!vpn.isActive && vpn.targetApp == null)
+              const SizedBox(height: 16),
             _SpeedGaugeCard(vpn: vpn, stats: stats),
             const SizedBox(height: 24),
             _TargetAppCard(vpn: vpn),
@@ -485,6 +489,41 @@ class _ProfilesSection extends StatelessWidget {
   }
 }
 
+class _NoTargetWarning extends StatelessWidget {
+  const _NoTargetWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline_rounded,
+              color: Color(0xFFF59E0B), size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'اختر تطبيقاً أولاً ثم شغّل المحرك لتركيز البيانات عليه',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 13,
+                color: Color(0xFF92400E),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BigToggleButton extends StatelessWidget {
   final VpnState vpn;
   final WidgetRef ref;
@@ -492,32 +531,53 @@ class _BigToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isGlobal = vpn.activeProfile == VpnProfile.globalAccess;
-    final canActivate = !isGlobal;
+    final isGlobal    = vpn.activeProfile == VpnProfile.globalAccess;
+    final hasTarget   = vpn.targetApp != null;
+    final canActivate = !isGlobal && hasTarget;
+    final isOn        = vpn.isActive && canActivate;
 
     return GestureDetector(
-      onTap: () => ref.read(vpnProvider.notifier).toggle(),
+      onTap: () {
+        if (!hasTarget && !vpn.isActive) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'اختر تطبيقاً من قائمة التطبيقات أولاً',
+                style: TextStyle(fontFamily: 'Cairo'),
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: Color(0xFFF59E0B),
+            ),
+          );
+          return;
+        }
+        ref.read(vpnProvider.notifier).toggle();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         width: double.infinity,
         height: 72,
         decoration: BoxDecoration(
-          gradient: vpn.isActive && canActivate ? AdenColors.gradient : null,
-          color: vpn.isActive && canActivate
+          gradient: isOn ? AdenColors.gradient : null,
+          color: isOn
               ? null
               : isGlobal
                   ? AdenColors.surface
-                  : const Color(0xFFEFF6FF),
+                  : !hasTarget
+                      ? const Color(0xFFFFF7ED)
+                      : const Color(0xFFEFF6FF),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: vpn.isActive && canActivate
+            color: isOn
                 ? Colors.transparent
-                : AdenColors.primary.withOpacity(0.3),
+                : !hasTarget
+                    ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+                    : AdenColors.primary.withValues(alpha: 0.3),
           ),
-          boxShadow: vpn.isActive && canActivate
+          boxShadow: isOn
               ? [
                   BoxShadow(
-                    color: AdenColors.primary.withOpacity(0.35),
+                    color: AdenColors.primary.withValues(alpha: 0.35),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -534,28 +594,32 @@ class _BigToggleButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      vpn.isActive && canActivate
+                      isOn
                           ? Icons.shield_rounded
-                          : Icons.shield_outlined,
-                      color: vpn.isActive && canActivate
-                          ? Colors.white
-                          : AdenColors.primary,
+                          : !hasTarget
+                              ? Icons.touch_app_outlined
+                              : Icons.shield_outlined,
+                      color: isOn ? Colors.white : AdenColors.primary,
                       size: 26,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       isGlobal
                           ? 'وضع الشفافية الكاملة'
-                          : vpn.isActive
-                              ? 'المحرك يعمل — اضغط للإيقاف'
-                              : 'اضغط لتشغيل المحرك',
+                          : !hasTarget
+                              ? 'اختر تطبيقاً أولاً'
+                              : vpn.isActive
+                                  ? 'المحرك يعمل — اضغط للإيقاف'
+                                  : 'اضغط لتشغيل المحرك',
                       style: TextStyle(
                         fontFamily: 'Cairo',
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: vpn.isActive && canActivate
+                        color: isOn
                             ? Colors.white
-                            : AdenColors.primary,
+                            : !hasTarget
+                                ? const Color(0xFF92400E)
+                                : AdenColors.primary,
                       ),
                     ),
                   ],
