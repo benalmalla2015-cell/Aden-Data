@@ -54,7 +54,7 @@ class _DisclosureScreenState extends State<DisclosureScreen> {
                 ),
               ),
               const Text(
-                'حارسك الشخصي للإنترنت',
+                'بوابتك لإنترنت أسرع بلا حدود',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 14,
@@ -96,7 +96,7 @@ class _DisclosureScreenState extends State<DisclosureScreen> {
                     const SizedBox(height: 14),
                     _buildPoint(
                       Icons.shield_rounded,
-                      'يستخدم التطبيق خدمة VPN محلية على جهازك فقط',
+                      'يعمل التطبيق كالمحرك الذكي داخل جهازك لتسريع اتصالك وتأمين بياناتك محلياً بنسبة 100%',
                     ),
                     _buildPoint(
                       Icons.cloud_off_rounded,
@@ -138,7 +138,7 @@ class _DisclosureScreenState extends State<DisclosureScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'بالموافقة، أنت توافق على استخدام الـ VPN المحلي',
+                'بالموافقة، تبدأ رحلتك مع الإنترنت الأسرع والأكثر أماناً',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Cairo',

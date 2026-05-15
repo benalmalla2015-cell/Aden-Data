@@ -69,12 +69,6 @@ class SettingsScreen extends ConsumerWidget {
             title: 'سياسة الخصوصية',
             subtitle: 'التطبيق لا يرسل أي بيانات خارجية',
           ),
-          _SettingsTile(
-            icon: Icons.code_rounded,
-            iconColor: AdenColors.primary,
-            title: 'مصدر المشروع',
-            subtitle: 'github.com/benalmalla2015-cell/Aden-Data',
-          ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
@@ -96,7 +90,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'حارسك الشخصي للإنترنت\nمبني بـ Flutter + Kotlin',
+                  'بوابتك لإنترنت أسرع بلا حدود',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Cairo',

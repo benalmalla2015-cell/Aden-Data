@@ -4,7 +4,12 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.TrafficStats
 import android.net.VpnService
 import android.os.Build
@@ -71,7 +76,13 @@ class AdenVpnService : VpnService() {
 
     private var prevRxBytes   = 0L
     private var prevTxBytes   = 0L
+    private var zeroCount     = 0       // consecutive zero-delta reads
+    private var useFallback   = false   // fallback to system-wide stats
     private val throughputWindow = ArrayDeque<Long>(5)
+
+    // Network switching — auto-rebuild tunnel on cellular ↔ Wi-Fi change
+    private var networkCallback : ConnectivityManager.NetworkCallback? = null
+    private var lastActiveNetType = -1
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -118,6 +129,7 @@ class AdenVpnService : VpnService() {
         startDropAllLoop()
         startBandwidthMonitor(tUid)
         startAiMonitor(tPkg, tUid)
+        registerNetworkCallback(tPkg, tUid)
 
         Log.i(TAG, "VPN started | profile=$profile | target=$tPkg | uid=$tUid")
     }
@@ -136,7 +148,7 @@ class AdenVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer("8.8.8.8")
                 .addDnsServer("1.1.1.1")
-                .setMtu(1500)
+                .setMtu(1280)
                 .setBlocking(true)
 
             // Our own app always bypasses (keep Flutter ↔ service comms alive)
@@ -214,25 +226,52 @@ class AdenVpnService : VpnService() {
 
     private fun startBandwidthMonitor(uid: Int) {
         bwTask?.cancel(false)
+        zeroCount = 0
+        useFallback = false
         if (uid == TrafficStats.UNSUPPORTED || uid <= 0) {
-            Log.w(TAG, "Invalid UID $uid — TrafficStats monitor skipped")
-            downloadBytes = 0L; uploadBytes = 0L
-            return
+            Log.w(TAG, "Invalid UID $uid — falling back to system-wide TrafficStats")
+            useFallback = true
         }
 
-        prevRxBytes = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
-        prevTxBytes = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
+        if (!useFallback) {
+            prevRxBytes = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
+            prevTxBytes = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
+        } else {
+            prevRxBytes = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
+            prevTxBytes = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
+        }
 
         var latencyTick = 0
 
         bwTask = bwExecutor.scheduleAtFixedRate({
             try {
-                val rx = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
-                val tx = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
-                downloadBytes = (rx - prevRxBytes).coerceAtLeast(0)
-                uploadBytes   = (tx - prevTxBytes).coerceAtLeast(0)
-                prevRxBytes   = rx
-                prevTxBytes   = tx
+                val rx: Long
+                val tx: Long
+                if (!useFallback) {
+                    rx = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
+                    tx = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
+                } else {
+                    rx = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
+                    tx = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
+                }
+                val deltaRx = (rx - prevRxBytes).coerceAtLeast(0)
+                val deltaTx = (tx - prevTxBytes).coerceAtLeast(0)
+                prevRxBytes = rx
+                prevTxBytes = tx
+
+                // If we get 5 consecutive zero deltas on UID stats, switch to fallback
+                if (!useFallback && deltaRx == 0L && deltaTx == 0L) {
+                    zeroCount++
+                    if (zeroCount >= 5) {
+                        useFallback = true
+                        Log.w(TAG, "UID stats returning 0 for 5s — switching to system-wide fallback")
+                    }
+                } else {
+                    zeroCount = 0
+                }
+
+                downloadBytes = deltaRx
+                uploadBytes   = deltaTx
 
                 // Measure latency every 10 seconds
                 latencyTick++
@@ -280,6 +319,59 @@ class AdenVpnService : VpnService() {
         }, 2, 1, TimeUnit.SECONDS)
     }
 
+    // ── Network switching ─────────────────────────────────────────────────────
+
+    private fun registerNetworkCallback(tPkg: String, tUid: Int) {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+            unregisterNetworkCallback()
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    val caps = cm.getNetworkCapabilities(network) ?: return
+                    val netType = when {
+                        caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)     -> 1
+                        caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> 2
+                        else -> 0
+                    }
+                    if (lastActiveNetType != -1 && lastActiveNetType != netType) {
+                        Log.i(TAG, "Network switched ${lastActiveNetType}→$netType | rebuilding tunnel")
+                        mainHandler.post {
+                            try {
+                                vpnInterface?.close()
+                                vpnInterface = null
+                                if (buildVpnInterface(tPkg)) {
+                                    startDropAllLoop()
+                                    startBandwidthMonitor(tUid)
+                                    Log.i(TAG, "Tunnel rebuilt on network switch")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Tunnel rebuild failed", e)
+                            }
+                        }
+                    }
+                    lastActiveNetType = netType
+                }
+            }
+            networkCallback = cb
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            cm.registerNetworkCallback(request, cb)
+            Log.i(TAG, "Network callback registered")
+        } catch (e: Exception) {
+            Log.e(TAG, "registerNetworkCallback error", e)
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+            networkCallback?.let { cm.unregisterNetworkCallback(it) }
+            networkCallback = null
+            lastActiveNetType = -1
+        } catch (_: Exception) {}
+    }
+
     // ── Stop ──────────────────────────────────────────────────────────────────
 
     fun stopEngine() {
@@ -290,6 +382,7 @@ class AdenVpnService : VpnService() {
         readerThread = null
         try { vpnInterface?.close() } catch (_: Exception) {}
         vpnInterface = null
+        unregisterNetworkCallback()
         classifier?.close()
         classifier = null
         isRunning      = false
