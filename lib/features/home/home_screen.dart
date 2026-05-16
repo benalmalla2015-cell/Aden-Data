@@ -24,17 +24,7 @@ class HomeScreen extends ConsumerWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AdenLogo(size: 32),
-            const SizedBox(width: 10),
-            const Text(
-              'عدن داتا',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.w700,
-                fontSize: 20,
-                color: AdenColors.textDark,
-              ),
-            ),
+            const AdenLogo(size: 36),
           ],
         ),
         actions: [
@@ -51,9 +41,9 @@ class HomeScreen extends ConsumerWidget {
           children: [
             if (vpn.isActive) const _NetworkQualityBanner(),
             if (vpn.isActive) const SizedBox(height: 16),
-            if (!vpn.isActive && vpn.targetApp == null)
+            if (!vpn.isActive && vpn.targetApp == null && vpn.activeProfile != VpnProfile.globalAccess)
               const _NoTargetWarning(),
-            if (!vpn.isActive && vpn.targetApp == null)
+            if (!vpn.isActive && vpn.targetApp == null && vpn.activeProfile != VpnProfile.globalAccess)
               const SizedBox(height: 16),
             _SpeedGaugeCard(vpn: vpn, stats: stats),
             const SizedBox(height: 24),
@@ -533,12 +523,11 @@ class _BigToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isGlobal    = vpn.activeProfile == VpnProfile.globalAccess;
     final hasTarget   = vpn.targetApp != null;
-    final canActivate = !isGlobal && hasTarget;
-    final isOn        = vpn.isActive && canActivate;
+    final isOn        = vpn.isActive;
 
     return GestureDetector(
       onTap: () {
-        if (!hasTarget && !vpn.isActive) {
+        if (!isGlobal && !hasTarget && !vpn.isActive) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -562,7 +551,7 @@ class _BigToggleButton extends StatelessWidget {
           color: isOn
               ? null
               : isGlobal
-                  ? AdenColors.surface
+                  ? const Color(0xFFEFF6FF)
                   : !hasTarget
                       ? const Color(0xFFFFF7ED)
                       : const Color(0xFFEFF6FF),
@@ -570,7 +559,7 @@ class _BigToggleButton extends StatelessWidget {
           border: Border.all(
             color: isOn
                 ? Colors.transparent
-                : !hasTarget
+                : !hasTarget && !isGlobal
                     ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
                     : AdenColors.primary.withValues(alpha: 0.3),
           ),
@@ -596,7 +585,7 @@ class _BigToggleButton extends StatelessWidget {
                     Icon(
                       isOn
                           ? Icons.shield_rounded
-                          : !hasTarget
+                          : !hasTarget && !isGlobal
                               ? Icons.touch_app_outlined
                               : Icons.shield_outlined,
                       color: isOn ? Colors.white : AdenColors.primary,
@@ -605,7 +594,9 @@ class _BigToggleButton extends StatelessWidget {
                     const SizedBox(width: 10),
                     Text(
                       isGlobal
-                          ? 'وضع الشفافية الكاملة'
+                          ? (vpn.isActive
+                              ? 'المحرك يعمل — الشفافية الكاملة'
+                              : 'اضغط لتفعيل الشفافية الكاملة')
                           : !hasTarget
                               ? 'اختر تطبيقاً أولاً'
                               : vpn.isActive
@@ -617,7 +608,7 @@ class _BigToggleButton extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: isOn
                             ? Colors.white
-                            : !hasTarget
+                            : !hasTarget && !isGlobal
                                 ? const Color(0xFF92400E)
                                 : AdenColors.primary,
                       ),

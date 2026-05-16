@@ -62,6 +62,7 @@ class AdenVpnService : VpnService() {
         @Volatile var currentAiState : AiState = AiState.NORMAL
         @Volatile var targetPkg      : String  = ""
         @Volatile var targetUid      : Int     = TrafficStats.UNSUPPORTED
+        @Volatile var globalMode     : Boolean = false
     }
 
     private var vpnInterface  : ParcelFileDescriptor? = null
@@ -103,16 +104,21 @@ class AdenVpnService : VpnService() {
     private fun startEngine(tPkg: String, tUid: Int, profile: String) {
         if (running.getAndSet(true)) return
 
-        if (profile == "GLOBAL") {
-            running.set(false)
-            stopSelf()
-            return
-        }
-
+        createNotificationChannel()
         targetPkg = tPkg
         targetUid = tUid
 
-        createNotificationChannel()
+        if (profile == "GLOBAL") {
+            // GLOBAL = transparent mode: service runs but no VPN interface
+            globalMode = true
+            isRunning = true
+            startForeground(NOTIF_ID, buildNotification(AiState.NORMAL, "شفافية كاملة"))
+            startBandwidthMonitor(TrafficStats.UNSUPPORTED)   // system-wide stats
+            Log.i(TAG, "GLOBAL mode started | all apps work normally")
+            return
+        }
+        globalMode = false
+
         startForeground(NOTIF_ID, buildNotification(AiState.NORMAL, tPkg))
 
         if (!buildVpnInterface(tPkg)) {
@@ -228,47 +234,23 @@ class AdenVpnService : VpnService() {
         bwTask?.cancel(false)
         zeroCount = 0
         useFallback = false
-        if (uid == TrafficStats.UNSUPPORTED || uid <= 0) {
-            Log.w(TAG, "Invalid UID $uid — falling back to system-wide TrafficStats")
-            useFallback = true
-        }
 
-        if (!useFallback) {
-            prevRxBytes = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
-            prevTxBytes = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
-        } else {
-            prevRxBytes = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
-            prevTxBytes = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
-        }
+        // Always use system-wide total stats — works on ALL Android versions
+        // without READ_PHONE_STATE. Per-UID stats require that permission on
+        // Android 10+ and often return 0 for non-system apps.
+        prevRxBytes = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
+        prevTxBytes = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
 
         var latencyTick = 0
 
         bwTask = bwExecutor.scheduleAtFixedRate({
             try {
-                val rx: Long
-                val tx: Long
-                if (!useFallback) {
-                    rx = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0)
-                    tx = TrafficStats.getUidTxBytes(uid).coerceAtLeast(0)
-                } else {
-                    rx = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
-                    tx = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
-                }
+                val rx = TrafficStats.getTotalRxBytes().coerceAtLeast(0)
+                val tx = TrafficStats.getTotalTxBytes().coerceAtLeast(0)
                 val deltaRx = (rx - prevRxBytes).coerceAtLeast(0)
                 val deltaTx = (tx - prevTxBytes).coerceAtLeast(0)
                 prevRxBytes = rx
                 prevTxBytes = tx
-
-                // If we get 5 consecutive zero deltas on UID stats, switch to fallback
-                if (!useFallback && deltaRx == 0L && deltaTx == 0L) {
-                    zeroCount++
-                    if (zeroCount >= 5) {
-                        useFallback = true
-                        Log.w(TAG, "UID stats returning 0 for 5s — switching to system-wide fallback")
-                    }
-                } else {
-                    zeroCount = 0
-                }
 
                 downloadBytes = deltaRx
                 uploadBytes   = deltaTx
@@ -386,6 +368,7 @@ class AdenVpnService : VpnService() {
         classifier?.close()
         classifier = null
         isRunning      = false
+        globalMode     = false
         currentAiState = AiState.NORMAL
         downloadBytes  = 0L
         uploadBytes    = 0L

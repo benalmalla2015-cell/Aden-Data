@@ -88,7 +88,7 @@ extension VpnProfileX on VpnProfile {
       case VpnProfile.emergency:
         return 'وضع طوارئ — يقتل TCP الثقيل ويفتح UDP للرسائل فقط';
       case VpnProfile.globalAccess:
-        return 'إيقاف المحرك — جميع التطبيقات تعمل بشكل طبيعي';
+        return 'تشغيل المحرك — جميع التطبيقات تعمل بشكل طبيعي';
     }
   }
 }
@@ -157,11 +157,6 @@ class VpnNotifier extends StateNotifier<VpnState> {
       await VpnChannel.stopVpn();
       state = state.copyWith(isActive: false, isLoading: false);
     } else {
-      if (state.activeProfile == VpnProfile.globalAccess) {
-        await VpnChannel.stopVpn();
-        state = state.copyWith(isActive: false, isLoading: false);
-        return;
-      }
       final packages = state.targetApp != null
           ? [state.targetApp!.packageName]
           : <String>[];
@@ -174,15 +169,7 @@ class VpnNotifier extends StateNotifier<VpnState> {
   }
 
   void setProfile(VpnProfile profile) {
-    if (profile == VpnProfile.globalAccess && state.isActive) {
-      VpnChannel.stopVpn();
-      state = state.copyWith(
-        activeProfile: profile,
-        isActive: false,
-      );
-    } else {
-      state = state.copyWith(activeProfile: profile);
-    }
+    state = state.copyWith(activeProfile: profile);
   }
 
   void setTargetApp(AppInfo app) {

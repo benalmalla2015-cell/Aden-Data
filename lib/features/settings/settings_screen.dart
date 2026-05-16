@@ -69,6 +69,108 @@ class SettingsScreen extends ConsumerWidget {
             title: 'سياسة الخصوصية',
             subtitle: 'التطبيق لا يرسل أي بيانات خارجية',
           ),
+          _SettingsTile(
+            icon: Icons.support_agent_rounded,
+            iconColor: const Color(0xFF25D366),
+            title: 'تواصل معنا',
+            subtitle: 'تطوير وبرمجة مؤسسة مدحت رشاد سعيد للحلول التقنية',
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AdenColors.bg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AdenColors.divider),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.chat_rounded,
+                      color: Color(0xFF25D366), size: 22),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'واتساب',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AdenColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        '781115345',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          color: AdenColors.textMid,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AdenColors.bg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AdenColors.divider),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AdenColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.phone_rounded,
+                      color: AdenColors.primary, size: 22),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'اتصال',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AdenColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        '777511122',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          color: AdenColors.textMid,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),

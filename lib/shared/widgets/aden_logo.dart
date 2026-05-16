@@ -8,9 +8,15 @@ class AdenLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _LogoPainter(),
+    return Image.asset(
+      'assets/images/logo.jpg',
+      height: size,
+      width: size * 2.5,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => CustomPaint(
+        size: Size(size, size),
+        painter: _LogoPainter(),
+      ),
     );
   }
 }

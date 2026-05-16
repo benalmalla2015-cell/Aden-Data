@@ -63,16 +63,13 @@ class VpnBridge(private val context: Context) : MethodChannel.MethodCallHandler,
         val packages = call.argument<List<String>>("allowedPackages") ?: emptyList()
         val profile   = call.argument<String>("profile") ?: "CELLULAR"
 
-        if (profile == "GLOBAL") {
-            stopVpnService()
-            result.success(false)
-            return
-        }
-
-        val prepareIntent = VpnService.prepare(context)
-        if (prepareIntent != null) {
-            result.error("VPN_PERMISSION_REQUIRED", "VPN permission required", null)
-            return
+        // GLOBAL mode does NOT need VPN permission (no TUN interface)
+        if (profile != "GLOBAL") {
+            val prepareIntent = VpnService.prepare(context)
+            if (prepareIntent != null) {
+                result.error("VPN_PERMISSION_REQUIRED", "VPN permission required", null)
+                return
+            }
         }
 
         // Resolve target package + UID (first entry in the list)
