@@ -20,11 +20,13 @@ class HomeScreen extends ConsumerWidget {
       backgroundColor: AdenColors.bg,
       appBar: AppBar(
         backgroundColor: AdenColors.bg,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AdenLogo(size: 36),
+            const AdenLogo(size: 44),
           ],
         ),
         actions: [
